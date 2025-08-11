@@ -7,13 +7,24 @@ For banks, traders, regulators, and treasuries. *(280 characters)*
 
 ---
 
-### Overview
-This is a prototype for a real-time, RBI-aligned platform for INR-denominated cross-border trade settlement.  
-Built as a single-file **Streamlit** application (`main.py`), it provides secure, transparent transaction processing and analytics for banks, exporters/importers, regulators, and treasuries.
+## 🚧 Prototype Disclaimer
+This repository contains **prototype software** — not finished, production-ready code.  
+It is intended for **experimentation, architecture validation, and demonstration** only.  
+If you plan to deploy in production, perform **security audits, compliance checks**, integration testing, and performance tuning.
 
 ---
 
-### Features
+## 📖 Overview
+A real-time, **RBI-aligned** platform prototype for INR-denominated cross-border trade settlement.  
+Built as a single-file **Streamlit** application (`main.py`), it enables **secure, transparent** transaction processing and analytics for:
+- Banks
+- Exporters / Importers
+- Regulators
+- Treasuries
+
+---
+
+## ✨ Features
 - **Dual-rail ingestion:** UPI, NEFT, SRVA-INR, and SRVA-Non-INR transactions  
 - **Security:** AES-256-GCM at rest, TLS 1.3 in transit, with key rotation  
 - **Real-time analytics:** Plotly visualizations for risk scores, corridor stats, and FX volatility  
@@ -24,9 +35,14 @@ Built as a single-file **Streamlit** application (`main.py`), it provides secure
 
 ---
 
-### Installation
+## 🛠 Installation
 
-**Clone the repository**
+### Option 1 — Install via `requirements.txt`
 ```bash
+# Clone the repository
 git clone https://github.com/your-username/Global-INR-Trade-Settlement-proto-Type.git
 cd Global-INR-Trade-Settlement-proto-Type
+
+# Install dependencies
+pip install -r requirements.txt
+
