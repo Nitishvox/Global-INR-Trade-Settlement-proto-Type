@@ -1,0 +1,19 @@
+# Core App Framework
+streamlit==1.48.0
+
+# Data Handling
+pandas==2.3.1
+numpy==2.3.2
+
+# Security / Encryption
+cryptography==43.0.1
+
+# Visualization
+plotly==5.22.0
+
+# Date/Time utilities (pulled in by pandas, but pinned for consistency)
+python-dateutil==2.9.0.post0
+pytz==2025.2
+tzdata==2025.2
+
+# Optional: JSON handling, UUID, and type hints are in standard library, so no extra pin needed.
