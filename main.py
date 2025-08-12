@@ -263,7 +263,7 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # Custom CSS for better styling
+    # Custom CSS for better styling and responsiveness
     st.markdown("""
     <style>
     .main-header {
@@ -288,6 +288,38 @@ def main():
     .alert-high { background-color: #ffebee; border-left: 4px solid #f44336; }
     .alert-medium { background-color: #fff3e0; border-left: 4px solid #ff9800; }
     .alert-low { background-color: #e8f5e8; border-left: 4px solid #4caf50; }
+    
+    /* Responsive design improvements */
+    @media (max-width: 768px) {
+        .stMetric {
+            margin-bottom: 1rem;
+        }
+        .main-header {
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .stForm {
+            padding: 0.5rem;
+        }
+        .stButton > button {
+            width: 100%;
+        }
+        .stSlider > div {
+            width: 100%;
+        }
+        .stExpander {
+            width: 100%;
+        }
+        .stDataFrame {
+            width: 100%;
+            overflow-x: auto;
+        }
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 0 100% !important;
+            margin-bottom: 1rem;
+        }
+    }
     </style>
     """, unsafe_allow_html=True)
     
@@ -384,44 +416,18 @@ def main():
         if st.session_state.transactions:
             analytics, df = calculate_enhanced_analytics(st.session_state.transactions)
             
-            # Key metrics row
-            col1, col2, col3, col4, col5 = st.columns(5)
-            
-            with col1:
-                st.metric(
-                    "💰 Total Volume", 
-                    f"₹{analytics['total_volume']:,.0f}",
-                    delta=f"{len(st.session_state.transactions)} txns"
-                )
-            
-            with col2:
-                st.metric(
-                    "⚠️ Avg Risk Score", 
-                    f"{analytics['avg_risk']:.1f}",
-                    delta=f"{analytics['completion_rate']:.1f}% completed"
-                )
-            
-            with col3:
-                st.metric(
-                    "⏱️ Avg Processing", 
-                    f"{analytics['avg_processing_time']:.2f}s",
-                    delta=f"₹{analytics['total_fees']:,.0f} fees"
-                )
-            
-            with col4:
-                st.metric(
-                    "🌐 Active Corridors", 
-                    f"{analytics['unique_corridors']}",
-                    delta=f"{df['source'].nunique()} sources"
-                )
-            
-            with col5:
-                failed_count = len(df[df['status'] == 'Failed'])
-                st.metric(
-                    "❌ Failed Transactions", 
-                    f"{failed_count}",
-                    delta=f"{(failed_count/len(df)*100):.1f}%" if len(df) > 0 else "0%"
-                )
+            # Key metrics row - responsive stacking
+            cols = st.columns(min(5, len(st.columns(1))))
+            metrics = [
+                ("💰 Total Volume", f"₹{analytics['total_volume']:,.0f}", f"{len(st.session_state.transactions)} txns"),
+                ("⚠️ Avg Risk Score", f"{analytics['avg_risk']:.1f}", f"{analytics['completion_rate']:.1f}% completed"),
+                ("⏱️ Avg Processing", f"{analytics['avg_processing_time']:.2f}s", f"₹{analytics['total_fees']:,.0f} fees"),
+                ("🌐 Active Corridors", f"{analytics['unique_corridors']}", f"{df['source'].nunique()} sources"),
+                ("❌ Failed Transactions", f"{len(df[df['status'] == 'Failed'])}", f"{(len(df[df['status'] == 'Failed'])/len(df)*100):.1f}%" if len(df) > 0 else "0%")
+            ]
+            for i, (label, value, delta) in enumerate(metrics):
+                with cols[i % len(cols)]:
+                    st.metric(label, value, delta=delta)
             
             # Real-time dashboard
             st.plotly_chart(create_real_time_dashboard(analytics, df), use_container_width=True)
@@ -436,7 +442,7 @@ def main():
                 """, unsafe_allow_html=True)
                 
                 with st.expander("View High Risk Transactions"):
-                    st.dataframe(high_risk_txns[['id', 'amount', 'currency', 'corridor', 'risk_score', 'status']])
+                    st.dataframe(high_risk_txns[['id', 'amount', 'currency', 'corridor', 'risk_score', 'status']], use_container_width=True)
             
             # Recent transactions
             st.subheader("📋 Recent Transactions")
@@ -471,7 +477,7 @@ def main():
             with st.form("enhanced_transaction_form", clear_on_submit=True):
                 st.subheader("Manual Transaction Entry")
                 
-                col_a, col_b = st.columns(2)
+                col_a, col_b = st.columns([1, 1])
                 with col_a:
                     source = st.selectbox("Payment Source", ["UPI", "NEFT", "RTGS", "SRVA-INR", "SRVA-Non-INR", "SWIFT"])
                     currency = st.selectbox("Currency", ["INR", "USD", "EUR", "AED", "SGD", "GBP"])
@@ -558,7 +564,7 @@ def main():
                 # Risk heatmap
                 st.plotly_chart(create_risk_heatmap(df), use_container_width=True)
                 
-                col1, col2 = st.columns(2)
+                col1, col2 = st.columns([1, 1])
                 with col1:
                     # Source distribution
                     fig_source = px.pie(
@@ -583,7 +589,7 @@ def main():
                 fig_risk = px.histogram(df, x='risk_score', nbins=20, title='Risk Score Distribution')
                 st.plotly_chart(fig_risk, use_container_width=True)
                 
-                col1, col2 = st.columns(2)
+                col1, col2 = st.columns([1, 1])
                 with col1:
                     # Risk by corridor
                     risk_by_corridor = df.groupby('corridor')['risk_score'].mean().sort_values(ascending=False)
@@ -619,7 +625,7 @@ def main():
                 st.subheader("🔬 Deep Dive Analysis")
                 
                 # Filter controls
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3 = st.columns([1, 1, 1])
                 with col1:
                     selected_corridor = st.multiselect("Filter by Corridor", df['corridor'].unique())
                 with col2:
@@ -641,14 +647,14 @@ def main():
                 
                 # Summary stats for filtered data
                 if not filtered_df.empty:
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
+                    cols = st.columns(4)
+                    with cols[0]:
                         st.metric("Total Volume", f"₹{filtered_df['amount'].sum():,.0f}")
-                    with col2:
+                    with cols[1]:
                         st.metric("Avg Risk", f"{filtered_df['risk_score'].mean():.1f}")
-                    with col3:
+                    with cols[2]:
                         st.metric("Success Rate", f"{(filtered_df['status'] == 'Completed').mean()*100:.1f}%")
-                    with col4:
+                    with cols[3]:
                         st.metric("Avg Processing", f"{filtered_df['processing_time'].mean():.2f}s")
         else:
             st.info("📊 No transaction data available for analysis. Please add some transactions first.")
@@ -668,7 +674,7 @@ def main():
             # Latest rates
             latest_rates = fx_df.iloc[-1]
             
-            col1, col2, col3, col4, col5 = st.columns(5)
+            cols = st.columns(min(5, len(st.columns(1))))
             rate_cols = [col for col in fx_df.columns if col.endswith('_Rate')]
             
             for i, rate_col in enumerate(rate_cols[:5]):
@@ -677,7 +683,7 @@ def main():
                 prev_rate = fx_df.iloc[-2][rate_col] if len(fx_df) > 1 else current_rate
                 change = current_rate - prev_rate
                 
-                with [col1, col2, col3, col4, col5][i]:
+                with cols[i % len(cols)]:
                     st.metric(
                         pair.replace('INR', '/INR'),
                         f"{current_rate:.4f}",
@@ -730,10 +736,10 @@ def main():
             
             # Average volatility metrics
             avg_vol = fx_df[vol_cols].mean()
-            col1, col2, col3, col4, col5 = st.columns(5)
+            cols = st.columns(min(5, len(st.columns(1))))
             for i, vol_col in enumerate(vol_cols[:5]):
                 pair = vol_col.replace('_Volatility', '').replace('INR', '/INR')
-                with [col1, col2, col3, col4, col5][i]:
+                with cols[i % len(cols)]:
                     st.metric(f"{pair} Avg Vol", f"{avg_vol[vol_col]:.4f}")
         
         with tab3:
@@ -799,7 +805,7 @@ def main():
                     dec_txn['amount_decrypted'] = decrypt_data(txn.get('encrypted_amount'), st.session_state.encryption_key)
                     dec_txn['counterparty_decrypted'] = decrypt_data(txn.get('encrypted_counterparty'), st.session_state.encryption_key)
                     decrypted_data.append(dec_txn)
-                st.dataframe(pd.DataFrame(decrypted_data))
+                st.dataframe(pd.DataFrame(decrypted_data), use_container_width=True)
             else:
                 st.info("No transactions to display.")
         
@@ -810,7 +816,7 @@ def main():
         
         st.subheader("📝 Audit Log")
         if st.session_state.audit_log:
-            st.dataframe(pd.DataFrame(st.session_state.audit_log))
+            st.dataframe(pd.DataFrame(st.session_state.audit_log), use_container_width=True)
         else:
             st.info("No audit events recorded yet.")
     
