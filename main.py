@@ -1,4 +1,3 @@
-import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -14,8 +13,7 @@ from plotly.subplots import make_subplots
 import json
 import uuid
 from typing import Dict, List, Any
-import threading
-import queue
+import streamlit as st
 
 # Enhanced encryption with better error handling
 def encrypt_data(data, key):
@@ -52,7 +50,6 @@ def generate_realistic_transaction(source=None, amount=None, currency=None, corr
     currencies = ["INR", "USD", "EUR", "AED", "SGD", "GBP"]
     corridors = ["IN-US", "IN-EU", "IN-SG", "IN-AE", "IN-GB", "IN-JP"]
     
-    # Realistic amount ranges based on source
     amount_ranges = {
         "UPI": (100, 100000),
         "NEFT": (1000, 10000000),
@@ -72,7 +69,6 @@ def generate_realistic_transaction(source=None, amount=None, currency=None, corr
     timestamp = datetime.now() - timedelta(seconds=np.random.randint(0, 3600))
     transaction_id = str(uuid.uuid4())[:12]
     
-    # Enhanced risk calculation
     base_risk = np.random.uniform(10, 30)
     if selected_amount > 10000000:
         base_risk += 25
@@ -106,7 +102,6 @@ def simulate_enhanced_fx_data(days=30):
     dates = [datetime.now() - timedelta(days=i) for i in range(days)]
     dates.reverse()
     
-    # Base rates with realistic trends
     base_rates = {
         "USDINR": 83.5,
         "EURINR": 90.2,
@@ -119,7 +114,6 @@ def simulate_enhanced_fx_data(days=30):
     for i, date in enumerate(dates):
         data_point = {"Date": date}
         for pair, base_rate in base_rates.items():
-            # Add realistic daily movements
             daily_change = np.random.normal(0, 0.005) + np.sin(i/10) * 0.002
             rate = base_rate * (1 + daily_change * (i+1))
             volatility = abs(np.random.normal(0.02, 0.01))
@@ -139,18 +133,15 @@ def calculate_enhanced_analytics(transactions):
     
     df = pd.DataFrame(transactions)
     
-    # KPIs
     total_volume = df['amount'].sum()
     avg_risk = df['risk_score'].mean()
     completion_rate = (df['status'] == 'Completed').mean() * 100
     avg_processing_time = df['processing_time'].mean()
     total_fees = df['fees'].sum()
     
-    # Time series analysis
     df['hour'] = df['timestamp'].dt.hour
     hourly_volume = df.groupby('hour')['amount'].sum().reset_index()
     
-    # Risk distribution
     risk_bins = pd.cut(df['risk_score'], bins=[0, 25, 50, 75, 100], labels=['Low', 'Medium', 'High', 'Critical'])
     risk_distribution = risk_bins.value_counts()
     
@@ -200,7 +191,6 @@ def create_volume_treemap(df):
     return fig
 
 def create_real_time_dashboard(analytics, df):
-    # Create subplots
     fig = make_subplots(
         rows=2, cols=2,
         subplot_titles=('Hourly Volume Trend', 'Risk Distribution', 
@@ -209,7 +199,6 @@ def create_real_time_dashboard(analytics, df):
                [{"type": "pie"}, {"secondary_y": False}]]
     )
     
-    # Hourly volume
     hourly_data = analytics['hourly_volume']
     fig.add_trace(
         go.Scatter(x=hourly_data['hour'], y=hourly_data['amount'], 
@@ -217,21 +206,18 @@ def create_real_time_dashboard(analytics, df):
         row=1, col=1
     )
     
-    # Risk distribution pie
     risk_dist = analytics['risk_distribution']
     fig.add_trace(
         go.Pie(labels=risk_dist.index, values=risk_dist.values, name="Risk"),
         row=1, col=2
     )
     
-    # Currency distribution pie
     curr_dist = analytics['currency_distribution'].head(5)
     fig.add_trace(
         go.Pie(labels=curr_dist.index, values=curr_dist.values, name="Currency"),
         row=2, col=1
     )
     
-    # Processing time scatter
     fig.add_trace(
         go.Scatter(x=df['amount'], y=df['processing_time'], 
                   mode='markers', name='Processing Time',
@@ -242,36 +228,42 @@ def create_real_time_dashboard(analytics, df):
     fig.update_layout(height=800, showlegend=False, title_text="Real-Time Analytics Dashboard")
     return fig
 
-# Background transaction generator
-def auto_generate_thread(q):
-    while st.session_state.get('auto_generate', False):
-        transaction = generate_realistic_transaction()
-        encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
-        encrypted_counterparty = encrypt_data(transaction["counterparty"], st.session_state.encryption_key)
-        transaction.update({
-            "encrypted_amount": encrypted_amount,
-            "encrypted_counterparty": encrypted_counterparty
-        })
-        q.put(transaction)
-        time.sleep(6)  # Generate ~10 per minute
+# Function to predict risk for uploaded data (simple rule-based)
+def predict_risk(row):
+    base_risk = np.random.uniform(10, 30)
+    if row['amount'] > 10000000:
+        base_risk += 25
+    if row['currency'] != "INR":
+        base_risk += 15
+    if row['source'].startswith("SRVA"):
+        base_risk += 10
+    if row['corridor'] in ["IN-US", "IN-EU"]:
+        base_risk += 8
+    return min(base_risk + np.random.uniform(-5, 15), 100)
 
 # Streamlit app with enhanced UI
 def main():
     st.set_page_config(
         page_title="Global-INR Trade Settlement Platform", 
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
+        page_icon="🌐"
     )
     
-    # Custom CSS for better styling and responsiveness
+    # Enhanced Custom CSS for better styling, responsiveness, and modern look
     st.markdown("""
     <style>
     .main-header {
         background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
-        padding: 1rem;
-        border-radius: 10px;
+        padding: 1.5rem;
+        border-radius: 12px;
         color: white;
         margin-bottom: 2rem;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .main-header h1 {
+        font-family: 'Arial Black', sans-serif;
+        font-size: 2.5rem;
     }
     .metric-card {
         background: white;
@@ -288,7 +280,16 @@ def main():
     .alert-high { background-color: #ffebee; border-left: 4px solid #f44336; }
     .alert-medium { background-color: #fff3e0; border-left: 4px solid #ff9800; }
     .alert-low { background-color: #e8f5e8; border-left: 4px solid #4caf50; }
-    
+    .stButton > button {
+        background-color: #2a5298;
+        color: white;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+    }
+    .stButton > button:hover {
+        background-color: #1e3c72;
+    }
     /* Responsive design improvements */
     @media (max-width: 768px) {
         .stMetric {
@@ -320,13 +321,20 @@ def main():
             margin-bottom: 1rem;
         }
     }
+    /* Add modern font and smooth transitions */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    * {
+        transition: all 0.3s ease;
+    }
     </style>
     """, unsafe_allow_html=True)
     
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🌐 Global-INR Trade Settlement Intelligence Platform</h1>
+        <h1>Global-INR Trade Settlement Intelligence Platform</h1>
         <p><strong>Motto:</strong> Secure speed. Transparent trust. INR-first global flows</p>
         <p><strong>Vision:</strong> Real-time, RBI-aligned intelligence for INR-denominated cross-border trade</p>
     </div>
@@ -337,69 +345,70 @@ def main():
         st.session_state.transactions = []
     if "encryption_key" not in st.session_state:
         st.session_state.encryption_key = generate_key()
-    if "auto_generate" not in st.session_state:
-        st.session_state.auto_generate = False
     if "fx_data" not in st.session_state:
         st.session_state.fx_data = simulate_enhanced_fx_data()
     if "audit_log" not in st.session_state:
         st.session_state.audit_log = []
-    if "transaction_queue" not in st.session_state:
-        st.session_state.transaction_queue = queue.Queue()
-    if "gen_thread" not in st.session_state:
-        st.session_state.gen_thread = None
     
-    # Start auto-generate thread if enabled
-    if st.session_state.auto_generate:
-        if st.session_state.gen_thread is None or not st.session_state.gen_thread.is_alive():
-            st.session_state.gen_thread = threading.Thread(target=auto_generate_thread, args=(st.session_state.transaction_queue,))
-            st.session_state.gen_thread.daemon = True
-            st.session_state.gen_thread.start()
+    # Control Panel with generation buttons
+    st.sidebar.header("Control Panel")
     
-    # Process queued transactions
-    while not st.session_state.transaction_queue.empty():
-        st.session_state.transactions.append(st.session_state.transaction_queue.get())
-    
-    # Sidebar with enhanced navigation and controls
-    st.sidebar.header("🎛️ Control Panel")
-    
-    # Auto-generation toggle
-    auto_gen = st.sidebar.checkbox("🔄 Auto-generate transactions", value=st.session_state.auto_generate)
-    if auto_gen != st.session_state.auto_generate:
-        st.session_state.auto_generate = auto_gen
+    if st.sidebar.button("Generate 10 Transactions"):
+        for _ in range(10):
+            transaction = generate_realistic_transaction()
+            encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
+            encrypted_counterparty = encrypt_data(transaction["counterparty"], st.session_state.encryption_key)
+            transaction.update({
+                "encrypted_amount": encrypted_amount,
+                "encrypted_counterparty": encrypted_counterparty
+            })
+            st.session_state.transactions.append(transaction)
+        st.sidebar.success("10 transactions generated!")
         st.rerun()
     
-    if st.session_state.auto_generate:
-        if st.sidebar.button("Generate 10 Random Transactions"):
-            for _ in range(10):
-                transaction = generate_realistic_transaction()
-                encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
-                encrypted_counterparty = encrypt_data(transaction["counterparty"], st.session_state.encryption_key)
-                transaction.update({
-                    "encrypted_amount": encrypted_amount,
-                    "encrypted_counterparty": encrypted_counterparty
-                })
-                st.session_state.transactions.append(transaction)
-            st.sidebar.success("✅ 10 transactions generated!")
-            st.rerun()
+    if st.sidebar.button("Generate 1000 Transactions"):
+        for _ in range(1000):
+            transaction = generate_realistic_transaction()
+            encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
+            encrypted_counterparty = encrypt_data(transaction["counterparty"], st.session_state.encryption_key)
+            transaction.update({
+                "encrypted_amount": encrypted_amount,
+                "encrypted_counterparty": encrypted_counterparty
+            })
+            st.session_state.transactions.append(transaction)
+        st.sidebar.success("1000 transactions generated!")
+        st.rerun()
+    
+    if st.sidebar.button("Generate 10,000 Transactions"):
+        for _ in range(10000):
+            transaction = generate_realistic_transaction()
+            encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
+            encrypted_counterparty = encrypt_data(transaction["counterparty"], st.session_state.encryption_key)
+            transaction.update({
+                "encrypted_amount": encrypted_amount,
+                "encrypted_counterparty": encrypted_counterparty
+            })
+            st.session_state.transactions.append(transaction)
+        st.sidebar.success("10,000 transactions generated!")
+        st.rerun()
     
     # Data management
-    st.sidebar.subheader("📊 Data Management")
-    if st.sidebar.button("🗑️ Clear All Data"):
+    st.sidebar.subheader("Data Management")
+    if st.sidebar.button("Clear All Data"):
         st.session_state.transactions = []
         st.sidebar.success("Data cleared!")
         st.rerun()
     
-    if st.sidebar.button("🔄 Refresh FX Data"):
+    if st.sidebar.button("Refresh FX Data"):
         st.session_state.fx_data = simulate_enhanced_fx_data()
         st.sidebar.success("FX data refreshed!")
         st.rerun()
     
-    # Export functionality
     if st.session_state.transactions:
         df_export = pd.DataFrame(st.session_state.transactions)
         csv = df_export.to_csv(index=False)
         st.sidebar.download_button(
-            label="📥 Download Transaction Data",
+            label="Download Transaction Data",
             data=csv,
             file_name=f"inr_transactions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv"
@@ -407,45 +416,41 @@ def main():
     
     # Main navigation
     section = st.sidebar.radio(
-        "📍 Navigation", 
-        ["🏠 Dashboard", "➕ Transaction Ingestion", "📊 Analytics", "📈 Markets & FX", "🔐 Security Center", "⚙️ Settings"]
+        "Navigation", 
+        ["Dashboard", "Transaction Ingestion", "Analytics", "Markets & FX", "Security Center", "Settings", "About", "How to Use"]
     )
     
     # Dashboard Section
-    if section == "🏠 Dashboard":
+    if section == "Dashboard":
         if st.session_state.transactions:
             analytics, df = calculate_enhanced_analytics(st.session_state.transactions)
             
-            # Key metrics row - responsive stacking
             cols = st.columns(min(5, len(st.columns(1))))
             metrics = [
-                ("💰 Total Volume", f"₹{analytics['total_volume']:,.0f}", f"{len(st.session_state.transactions)} txns"),
-                ("⚠️ Avg Risk Score", f"{analytics['avg_risk']:.1f}", f"{analytics['completion_rate']:.1f}% completed"),
-                ("⏱️ Avg Processing", f"{analytics['avg_processing_time']:.2f}s", f"₹{analytics['total_fees']:,.0f} fees"),
-                ("🌐 Active Corridors", f"{analytics['unique_corridors']}", f"{df['source'].nunique()} sources"),
-                ("❌ Failed Transactions", f"{len(df[df['status'] == 'Failed'])}", f"{(len(df[df['status'] == 'Failed'])/len(df)*100):.1f}%" if len(df) > 0 else "0%")
+                ("Total Volume", f"₹{analytics['total_volume']:,.0f}", f"{len(st.session_state.transactions)} txns"),
+                ("Avg Risk Score", f"{analytics['avg_risk']:.1f}", f"{analytics['completion_rate']:.1f}% completed"),
+                ("Avg Processing", f"{analytics['avg_processing_time']:.2f}s", f"₹{analytics['total_fees']:,.0f} fees"),
+                ("Active Corridors", f"{analytics['unique_corridors']}", f"{df['source'].nunique()} sources"),
+                ("Failed Transactions", f"{len(df[df['status'] == 'Failed'])}", f"{(len(df[df['status'] == 'Failed'])/len(df)*100):.1f}%" if len(df) > 0 else "0%")
             ]
             for i, (label, value, delta) in enumerate(metrics):
                 with cols[i % len(cols)]:
                     st.metric(label, value, delta=delta)
             
-            # Real-time dashboard
             st.plotly_chart(create_real_time_dashboard(analytics, df), use_container_width=True)
             
-            # Risk alerts
             high_risk_txns = df[df['risk_score'] > 75]
             if not high_risk_txns.empty:
                 st.markdown(f"""
                 <div class="alert-box alert-high">
-                    <strong>🚨 High Risk Alert:</strong> {len(high_risk_txns)} transactions with risk score > 75
+                    <strong>High Risk Alert:</strong> {len(high_risk_txns)} transactions with risk score > 75
                 </div>
                 """, unsafe_allow_html=True)
                 
                 with st.expander("View High Risk Transactions"):
                     st.dataframe(high_risk_txns[['id', 'amount', 'currency', 'corridor', 'risk_score', 'status']], use_container_width=True)
             
-            # Recent transactions
-            st.subheader("📋 Recent Transactions")
+            st.subheader("Recent Transactions")
             recent_txns = df.nlargest(10, 'timestamp')
             st.dataframe(
                 recent_txns[['id', 'source', 'amount', 'currency', 'corridor', 'status', 'risk_score', 'timestamp']],
@@ -453,8 +458,8 @@ def main():
             )
             
         else:
-            st.info("🔄 No transactions yet. Generate some data or add transactions manually!")
-            if st.button("🎲 Generate Sample Data"):
+            st.info("No transactions yet. Generate some data or add transactions manually!")
+            if st.button("Generate Sample Data"):
                 for _ in range(50):
                     transaction = generate_realistic_transaction()
                     encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
@@ -464,12 +469,12 @@ def main():
                         "encrypted_counterparty": encrypted_counterparty
                     })
                     st.session_state.transactions.append(transaction)
-                st.success("✅ Sample data generated!")
+                st.success("Sample data generated!")
                 st.rerun()
     
     # Transaction Ingestion Section
-    elif section == "➕ Transaction Ingestion":
-        st.header("💱 Transaction Ingestion Center")
+    elif section == "Transaction Ingestion":
+        st.header("Transaction Ingestion Center")
         
         col1, col2 = st.columns([2, 1])
         
@@ -491,7 +496,7 @@ def main():
                 priority = st.select_slider("Priority Level", options=["Low", "Normal", "High", "Critical"])
                 notes = st.text_area("Transaction Notes (Optional)")
                 
-                submit = st.form_submit_button("🚀 Process Transaction", type="primary")
+                submit = st.form_submit_button("Process Transaction", type="primary")
                 
                 if submit and amount > 0:
                     transaction = generate_realistic_transaction(source, amount, currency, corridor)
@@ -503,11 +508,9 @@ def main():
                         "manual_entry": True
                     })
                     
-                    # Enhanced risk calculation for manual entries
                     if priority == "Critical":
                         transaction["risk_score"] += 20
                     
-                    # Encrypt sensitive data
                     encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
                     encrypted_counterparty = encrypt_data(transaction["counterparty"], st.session_state.encryption_key)
                     
@@ -518,22 +521,56 @@ def main():
                         })
                         st.session_state.transactions.append(transaction)
                         
-                        # Success message with details
                         st.success(f"""
-                        ✅ **Transaction Processed Successfully!**
-                        - **ID:** {transaction['id']}
-                        - **Risk Score:** {transaction['risk_score']:.1f}
-                        - **Processing Time:** {transaction['processing_time']:.2f}s
-                        - **Status:** {transaction['status']}
+                        Transaction Processed Successfully!
+                        - ID: {transaction['id']}
+                        - Risk Score: {transaction['risk_score']:.1f}
+                        - Processing Time: {transaction['processing_time']:.2f}s
+                        - Status: {transaction['status']}
                         """)
                         
                         time.sleep(0.5)
                         st.rerun()
                     else:
-                        st.error("❌ Failed to process transaction due to encryption error.")
+                        st.error("Failed to process transaction due to encryption error.")
+        
+            # Data Pipeline for Excel Upload and Predictions
+            st.subheader("Data Pipeline: Upload Excel for Transactions and Predictions")
+            st.info("Upload an Excel file with columns: source, amount, currency, corridor, counterparty, reference. The app will add transactions and predict risk scores.")
+            uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx", "xls"])
+            if uploaded_file is not None:
+                try:
+                    df_upload = pd.read_excel(uploaded_file)
+                    required_cols = ['source', 'amount', 'currency', 'corridor', 'counterparty', 'reference']
+                    if all(col in df_upload.columns for col in required_cols):
+                        for _, row in df_upload.iterrows():
+                            transaction = generate_realistic_transaction(
+                                source=row['source'],
+                                amount=row['amount'],
+                                currency=row['currency'],
+                                corridor=row['corridor']
+                            )
+                            transaction.update({
+                                "counterparty": row['counterparty'],
+                                "reference": row['reference'],
+                                "risk_score": predict_risk(row)
+                            })
+                            encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
+                            encrypted_counterparty = encrypt_data(transaction["counterparty"], st.session_state.encryption_key)
+                            transaction.update({
+                                "encrypted_amount": encrypted_amount,
+                                "encrypted_counterparty": encrypted_counterparty
+                            })
+                            st.session_state.transactions.append(transaction)
+                        st.success(f"Uploaded {len(df_upload)} transactions and predicted risk scores!")
+                        st.rerun()
+                    else:
+                        st.error("Excel file must have columns: source, amount, currency, corridor, counterparty, reference")
+                except Exception as e:
+                    st.error(f"Error processing file: {str(e)}")
         
         with col2:
-            st.subheader("📊 Quick Stats")
+            st.subheader("Quick Stats")
             if st.session_state.transactions:
                 recent_count = len([t for t in st.session_state.transactions 
                                  if (datetime.now() - t['timestamp']).total_seconds() < 3600])
@@ -545,28 +582,26 @@ def main():
                 latest = st.session_state.transactions[-1] if st.session_state.transactions else None
                 if latest:
                     st.info(f"""
-                    **Latest Transaction:**
+                    Latest Transaction:
                     - ID: {latest['id'][:8]}...
                     - Amount: {latest['currency']} {latest['amount']:,.2f}
                     - Status: {latest['status']}
                     """)
     
     # Analytics Section
-    elif section == "📊 Analytics":
-        st.header("📈 Advanced Analytics Center")
+    elif section == "Analytics":
+        st.header("Advanced Analytics Center")
         
         if st.session_state.transactions:
             analytics, df = calculate_enhanced_analytics(st.session_state.transactions)
             
-            tab1, tab2, tab3, tab4 = st.tabs(["🎯 Overview", "🌡️ Risk Analysis", "💰 Volume Analysis", "🔍 Deep Dive"])
+            tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Risk Analysis", "Volume Analysis", "Deep Dive"])
             
             with tab1:
-                # Risk heatmap
                 st.plotly_chart(create_risk_heatmap(df), use_container_width=True)
                 
-                col1, col2 = st.columns([1, 1])
+                col1, col2 = st.columns(2)
                 with col1:
-                    # Source distribution
                     fig_source = px.pie(
                         values=analytics['source_distribution'].values,
                         names=analytics['source_distribution'].index,
@@ -575,7 +610,6 @@ def main():
                     st.plotly_chart(fig_source, use_container_width=True)
                 
                 with col2:
-                    # Currency distribution
                     fig_curr = px.bar(
                         x=analytics['currency_distribution'].index,
                         y=analytics['currency_distribution'].values,
@@ -584,14 +618,13 @@ def main():
                     st.plotly_chart(fig_curr, use_container_width=True)
             
             with tab2:
-                st.subheader("🎲 Risk Score Distribution")
+                st.subheader("Risk Score Distribution")
                 
                 fig_risk = px.histogram(df, x='risk_score', nbins=20, title='Risk Score Distribution')
                 st.plotly_chart(fig_risk, use_container_width=True)
                 
-                col1, col2 = st.columns([1, 1])
+                col1, col2 = st.columns(2)
                 with col1:
-                    # Risk by corridor
                     risk_by_corridor = df.groupby('corridor')['risk_score'].mean().sort_values(ascending=False)
                     fig_corridor_risk = px.bar(
                         x=risk_by_corridor.values,
@@ -602,7 +635,6 @@ def main():
                     st.plotly_chart(fig_corridor_risk, use_container_width=True)
                 
                 with col2:
-                    # Risk vs Amount scatter
                     fig_scatter = px.scatter(
                         df, x='amount', y='risk_score', 
                         color='currency', size='processing_time',
@@ -611,21 +643,18 @@ def main():
                     st.plotly_chart(fig_scatter, use_container_width=True)
             
             with tab3:
-                st.subheader("💸 Volume Analysis")
+                st.subheader("Volume Analysis")
                 
-                # Volume treemap
                 st.plotly_chart(create_volume_treemap(df), use_container_width=True)
                 
-                # Time series analysis
                 df_hourly = df.set_index('timestamp').resample('H')['amount'].sum().reset_index()
                 fig_timeseries = px.line(df_hourly, x='timestamp', y='amount', title='Hourly Transaction Volume')
                 st.plotly_chart(fig_timeseries, use_container_width=True)
             
             with tab4:
-                st.subheader("🔬 Deep Dive Analysis")
+                st.subheader("Deep Dive Analysis")
                 
-                # Filter controls
-                col1, col2, col3 = st.columns([1, 1, 1])
+                col1, col2, col3 = st.columns(3)
                 with col1:
                     selected_corridor = st.multiselect("Filter by Corridor", df['corridor'].unique())
                 with col2:
@@ -633,7 +662,6 @@ def main():
                 with col3:
                     risk_threshold = st.slider("Risk Score Threshold", 0, 100, 50)
                 
-                # Apply filters
                 filtered_df = df.copy()
                 if selected_corridor:
                     filtered_df = filtered_df[filtered_df['corridor'].isin(selected_corridor)]
@@ -642,39 +670,36 @@ def main():
                 
                 filtered_df = filtered_df[filtered_df['risk_score'] >= risk_threshold]
                 
-                st.subheader(f"📋 Filtered Results ({len(filtered_df)} transactions)")
+                st.subheader(f"Filtered Results ({len(filtered_df)} transactions)")
                 st.dataframe(filtered_df, use_container_width=True)
                 
-                # Summary stats for filtered data
                 if not filtered_df.empty:
-                    cols = st.columns(4)
-                    with cols[0]:
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
                         st.metric("Total Volume", f"₹{filtered_df['amount'].sum():,.0f}")
-                    with cols[1]:
+                    with col2:
                         st.metric("Avg Risk", f"{filtered_df['risk_score'].mean():.1f}")
-                    with cols[2]:
+                    with col3:
                         st.metric("Success Rate", f"{(filtered_df['status'] == 'Completed').mean()*100:.1f}%")
-                    with cols[3]:
+                    with col4:
                         st.metric("Avg Processing", f"{filtered_df['processing_time'].mean():.2f}s")
         else:
-            st.info("📊 No transaction data available for analysis. Please add some transactions first.")
+            st.info("No transaction data available for analysis. Please add some transactions first.")
     
     # Markets & FX Section
-    elif section == "📈 Markets & FX":
-        st.header("📈 FX Markets & Currency Intelligence")
+    elif section == "Markets & FX":
+        st.header("FX Markets & Currency Intelligence")
         
-        # FX data display
         fx_df = st.session_state.fx_data
         
-        tab1, tab2, tab3 = st.tabs(["💱 Live Rates", "📊 Volatility Analysis", "📈 Trends"])
+        tab1, tab2, tab3 = st.tabs(["Live Rates", "Volatility Analysis", "Trends"])
         
         with tab1:
-            st.subheader("💱 Current FX Rates")
+            st.subheader("Current FX Rates")
             
-            # Latest rates
             latest_rates = fx_df.iloc[-1]
             
-            cols = st.columns(min(5, len(st.columns(1))))
+            col1, col2, col3, col4, col5 = st.columns(5)
             rate_cols = [col for col in fx_df.columns if col.endswith('_Rate')]
             
             for i, rate_col in enumerate(rate_cols[:5]):
@@ -683,15 +708,14 @@ def main():
                 prev_rate = fx_df.iloc[-2][rate_col] if len(fx_df) > 1 else current_rate
                 change = current_rate - prev_rate
                 
-                with cols[i % len(cols)]:
+                with [col1, col2, col3, col4, col5][i]:
                     st.metric(
                         pair.replace('INR', '/INR'),
                         f"{current_rate:.4f}",
                         delta=f"{change:+.4f}"
                     )
             
-            # Rate charts
-            st.subheader("📊 Rate Movements (Last 30 Days)")
+            st.subheader("Rate Movements (Last 30 Days)")
             
             fig_rates = go.Figure()
             for rate_col in rate_cols:
@@ -712,9 +736,8 @@ def main():
             st.plotly_chart(fig_rates, use_container_width=True)
         
         with tab2:
-            st.subheader("📊 Volatility Analysis")
+            st.subheader("Volatility Analysis")
             
-            # Volatility charts
             fig_vol = go.Figure()
             vol_cols = [col for col in fx_df.columns if col.endswith('_Volatility')]
             for vol_col in vol_cols:
@@ -734,18 +757,16 @@ def main():
             )
             st.plotly_chart(fig_vol, use_container_width=True)
             
-            # Average volatility metrics
             avg_vol = fx_df[vol_cols].mean()
-            cols = st.columns(min(5, len(st.columns(1))))
+            col1, col2, col3, col4, col5 = st.columns(5)
             for i, vol_col in enumerate(vol_cols[:5]):
                 pair = vol_col.replace('_Volatility', '').replace('INR', '/INR')
-                with cols[i % len(cols)]:
+                with [col1, col2, col3, col4, col5][i]:
                     st.metric(f"{pair} Avg Vol", f"{avg_vol[vol_col]:.4f}")
         
         with tab3:
-            st.subheader("📈 Market Trends & Insights")
+            st.subheader("Market Trends & Insights")
             
-            # Average daily changes
             daily_changes = {}
             for rate_col in rate_cols:
                 pair = rate_col.replace('_Rate', '').replace('INR', '/INR')
@@ -760,7 +781,6 @@ def main():
             )
             st.plotly_chart(fig_changes, use_container_width=True)
             
-            # Volatility box plots
             vol_data = pd.melt(fx_df, id_vars=['Date'], value_vars=vol_cols, 
                                var_name='Pair', value_name='Volatility')
             vol_data['Pair'] = vol_data['Pair'].str.replace('_Volatility', '').str.replace('INR', '/INR')
@@ -768,14 +788,14 @@ def main():
             st.plotly_chart(fig_box, use_container_width=True)
     
     # Security Center Section
-    elif section == "🔐 Security Center":
-        st.header("🔐 Security & Compliance Center")
+    elif section == "Security Center":
+        st.header("Security & Compliance Center")
         
-        st.subheader("🔑 Encryption Management")
+        st.subheader("Encryption Management")
         st.write("Current Encryption: AES-256-GCM (at rest), TLS 1.3 (in transit)")
         st.write("Key Rotation Policy: Automatic every 90 days or manual on demand")
         
-        if st.button("🔄 Rotate Encryption Key"):
+        if st.button("Rotate Encryption Key"):
             old_key = st.session_state.encryption_key
             st.session_state.encryption_key = generate_key()
             
@@ -795,9 +815,9 @@ def main():
                 "timestamp": datetime.now().isoformat(),
                 "details": "Key rotated successfully, data re-encrypted"
             })
-            st.success("✅ Encryption key rotated and all data re-encrypted!")
+            st.success("Encryption key rotated and all data re-encrypted!")
         
-        with st.expander("👀 View Decrypted Transaction Data"):
+        with st.expander("View Decrypted Transaction Data"):
             if st.session_state.transactions:
                 decrypted_data = []
                 for txn in st.session_state.transactions:
@@ -809,41 +829,103 @@ def main():
             else:
                 st.info("No transactions to display.")
         
-        st.subheader("📜 Regulatory Compliance")
+        st.subheader("Regulatory Compliance")
         st.write(" - FEMA Tagging: Enabled for all cross-border transactions")
         st.write(" - AFA Alignment: Fully compliant with RBI guidelines")
         st.write(" - Data Minimization: Only essential fields stored and encrypted")
         
-        st.subheader("📝 Audit Log")
+        st.subheader("Audit Log")
         if st.session_state.audit_log:
             st.dataframe(pd.DataFrame(st.session_state.audit_log), use_container_width=True)
         else:
             st.info("No audit events recorded yet.")
     
     # Settings Section
-    elif section == "⚙️ Settings":
-        st.header("⚙️ System Configuration")
+    elif section == "Settings":
+        st.header("System Configuration")
         
-        st.subheader("📊 Performance Metrics")
+        st.subheader("Performance Metrics")
         st.write("TPS Capacity: 10–50 (prototype) → 1,000+ (production scalable)")
         st.write("Ingestion Latency: <1s (real-time processing)")
         st.write("Analytics Latency: <3s (insight generation)")
         st.write("SRVA Utilization: Real-time monitoring with INR share growth tracking")
         st.write(f"Current Transaction Count: {len(st.session_state.transactions)}")
         
-        st.subheader("🛠️ Simulation Controls")
-        st.slider("Auto-Generation Rate (txns/min)", 1, 60, 10, disabled=not st.session_state.auto_generate)
-        st.info("Note: Auto-generation runs in background when enabled in sidebar. Adjust rate for simulation purposes.")
+        st.subheader("Simulation Controls")
+        st.info("Use sidebar buttons to generate transactions for simulation.")
         
-        st.subheader("🔧 Advanced Options")
+        st.subheader("Advanced Options")
         if st.checkbox("Enable Debug Mode"):
             st.write("Debug Info:")
             st.json({
                 "Session Keys": list(st.session_state.keys()),
                 "Transaction Count": len(st.session_state.transactions),
-                "FX Data Shape": st.session_state.fx_data.shape,
-                "Auto Generate Status": st.session_state.auto_generate
+                "FX Data Shape": st.session_state.fx_data.shape
             })
+    
+    # About Section (Simplified with Markdown)
+    elif section == "About":
+        st.header("About the Platform")
+        
+        st.markdown("""
+        **Overview:** The Global-INR Trade Settlement Intelligence Platform is an innovative tool that leverages real-time analytics to monitor INR-denominated cross-border trade. It integrates RBI-compliant mechanisms to simulate, analyze, and predict trade flows, promoting efficient global settlements in Rupee.
+        
+        **RBI Rules Included:**
+        - Special Rupee Vostro Accounts (SRVAs): Supports opening SRVAs without prior approval (RBI Circular August 2025, simplifying process for rupee-based trade settlements).<grok-card data-id="f21f1f" data-type="citation_card"></grok-card><grok-card data-id="f38ba5" data-type="citation_card"></grok-card>
+        - Invoicing in INR: Allows exports/imports to be denominated in INR (A.P. (DIR Series) Circular No. 10, July 11, 2022).<grok-card data-id="62a6e8" data-type="citation_card"></grok-card>
+        - FEMA and AFA Compliance: Built-in tagging for cross-border transactions and data minimization through encryption, aligned with RBI's Draft FEMA Regulations 2025 and liberalization measures.<grok-card data-id="49a690" data-type="citation_card"></grok-card><grok-card data-id="1f036d" data-type="citation_card"></grok-card>
+        
+        **How This Helps the Economy:**
+        - Reduces forex risks and conversion costs, saving billions in reserves.
+        - Boosts exports by making INR trade more accessible, reducing trade deficits.
+        - Promotes INR as a global currency, enhancing India's economic sovereignty.
+        - Supports MSMEs with risk predictions, fostering inclusive growth.
+        
+        **Project Info and Motive:**
+        - **Info:** Built with Streamlit for UI, Python for backend, and libraries like Plotly for visualizations. Prototype for demonstration; open-source on GitHub.
+        - **Motive:** To showcase RBI's vision for INR internationalization, provide actionable insights for traders/policymakers, and educate on secure trade analytics.
+        
+        **Features (Descriptive Point-by-Point):**
+        - **Transaction Management:** Generate, ingest, and encrypt transactions with RBI-compliant sources and corridors.
+        - **Data Pipeline:** Upload Excel files (format: source, amount, currency, corridor, counterparty, reference) for batch addition and risk predictions.
+        - **Analytics:** Interactive dashboards for risk heatmaps, volume treemaps, and filtered deep dives.
+        - **FX Intelligence:** Simulate rates, volatility, and trends for informed decisions.
+        - **Security:** AES encryption, key rotation, and audit logs for compliance.
+        - **Simulation:** Generate batches of transactions (10, 1000, 10,000) for testing.
+        
+        **Caution:** This is a prototype for educational use. Do not input real data or rely on predictions for financial decisions. Consult RBI/experts for actual trade.
+        """)
+        st.markdown('[Contact Us for Feedback](mailto:nitishvox@gmail.com)')
+    
+    # How to Use Section
+    elif section == "How to Use":
+        st.header("How to Use the Platform")
+        st.write("""
+        Welcome to the Global-INR Trade Settlement Intelligence Platform! Follow these steps to get started:
+        
+        1. **Navigation**: Use the sidebar to switch between sections like Dashboard, Transaction Ingestion, Analytics, etc.
+        
+        2. **Generate Transactions**:
+           - Use the sidebar buttons to generate 10, 1000, or 10,000 random transactions.
+           - For custom, go to "Transaction Ingestion" and fill the form.
+        
+        3. **Data Pipeline**:
+           - In "Transaction Ingestion", upload an Excel file (columns: source, amount, currency, corridor, counterparty, reference).
+           - The app adds transactions and predicts risk scores.
+        
+        4. **View Analytics**:
+           - Dashboard for KPIs and recent transactions.
+           - Analytics for charts and filters.
+        
+        5. **FX Markets**:
+           - Tabs for rates, volatility, and trends.
+        
+        6. **Security**:
+           - Rotate keys and view decrypted data.
+        
+        Tip: The app is optimized for desktop/mobile—use on phone for quick checks!
+        """)
+        st.video("https://www.youtube.com/watch?v=uZNordkkP7A")  # YouTube video explaining RBI's strategy for Rupee and Reserves (June 2025)
 
 if __name__ == "__main__":
     main()
