@@ -46,6 +46,8 @@ def generate_key():
 
 # Enhanced transaction generation with more realistic data
 def generate_realistic_transaction(source=None, amount=None, currency=None, corridor=None):
+    start_time = time.time()
+    
     sources = ["UPI", "NEFT", "SRVA-INR", "SRVA-Non-INR", "RTGS", "SWIFT"]
     currencies = ["INR", "USD", "EUR", "AED", "SGD", "GBP"]
     corridors = ["IN-US", "IN-EU", "IN-SG", "IN-AE", "IN-GB", "IN-JP"]
@@ -82,7 +84,7 @@ def generate_realistic_transaction(source=None, amount=None, currency=None, corr
     statuses = ["Completed", "Pending", "Failed", "Processing"]
     status_weights = [0.7, 0.15, 0.05, 0.1]
     
-    return {
+    transaction = {
         "id": transaction_id,
         "source": selected_source,
         "amount": round(selected_amount, 2),
@@ -96,6 +98,12 @@ def generate_realistic_transaction(source=None, amount=None, currency=None, corr
         "counterparty": f"Entity_{np.random.randint(1000, 9999)}",
         "reference": f"REF{np.random.randint(100000, 999999)}"
     }
+    
+    # Log generation time
+    duration = time.time() - start_time
+    st.session_state.performance_log["generation_times"].append((datetime.now(), duration))
+    
+    return transaction
 
 # Enhanced FX simulation with realistic volatility patterns
 def simulate_enhanced_fx_data(days=30):
@@ -128,6 +136,8 @@ def simulate_enhanced_fx_data(days=30):
 # Real-time analytics with caching
 @st.cache_data(ttl=30)
 def calculate_enhanced_analytics(transactions):
+    start_time = time.time()
+    
     if not transactions:
         return {}, pd.DataFrame()
     
@@ -158,6 +168,10 @@ def calculate_enhanced_analytics(transactions):
         'risk_distribution': risk_distribution,
         'hourly_volume': hourly_volume
     }
+    
+    # Log analytics time
+    duration = time.time() - start_time
+    st.session_state.performance_log["analytics_times"].append((datetime.now(), duration))
     
     return analytics, df
 
@@ -240,6 +254,28 @@ def predict_risk(row):
     if row['corridor'] in ["IN-US", "IN-EU"]:
         base_risk += 8
     return min(base_risk + np.random.uniform(-5, 15), 100)
+
+def calculate_tps():
+    if not st.session_state.performance_log["generation_times"]:
+        return 0.0
+    
+    # Consider transactions from the last 5 minutes
+    cutoff_time = datetime.now() - timedelta(minutes=5)
+    recent_generations = [
+        t for t, _ in st.session_state.performance_log["generation_times"]
+        if t > cutoff_time
+    ]
+    
+    if not recent_generations:
+        return 0.0
+    
+    time_window = (max(recent_generations) - min(recent_generations)).total_seconds()
+    if time_window == 0:
+        return 0.0
+    
+    tps = len(recent_generations) / time_window
+    st.session_state.performance_log["last_tps_calculation"] = tps
+    return tps
 
 # Streamlit app with enhanced UI
 def main():
@@ -349,11 +385,18 @@ def main():
         st.session_state.fx_data = simulate_enhanced_fx_data()
     if "audit_log" not in st.session_state:
         st.session_state.audit_log = []
+    if "performance_log" not in st.session_state:
+        st.session_state.performance_log = {
+            "generation_times": [],  # List of (timestamp, duration) for transaction generation
+            "analytics_times": [],  # List of (timestamp, duration) for analytics
+            "last_tps_calculation": None,  # Last calculated TPS
+        }
     
     # Control Panel with generation buttons
     st.sidebar.header("Control Panel")
     
     if st.sidebar.button("Generate 10 Transactions"):
+        start_time = time.time()
         for _ in range(10):
             transaction = generate_realistic_transaction()
             encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
@@ -363,10 +406,15 @@ def main():
                 "encrypted_counterparty": encrypted_counterparty
             })
             st.session_state.transactions.append(transaction)
+        # Log the batch generation time
+        batch_duration = time.time() - start_time
+        for _ in range(10):
+            st.session_state.performance_log["generation_times"].append((datetime.now(), batch_duration / 10))  # Per transaction average
         st.sidebar.success("10 transactions generated!")
         st.rerun()
     
     if st.sidebar.button("Generate 1000 Transactions"):
+        start_time = time.time()
         for _ in range(1000):
             transaction = generate_realistic_transaction()
             encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
@@ -376,10 +424,15 @@ def main():
                 "encrypted_counterparty": encrypted_counterparty
             })
             st.session_state.transactions.append(transaction)
+        # Log the batch generation time
+        batch_duration = time.time() - start_time
+        for _ in range(1000):
+            st.session_state.performance_log["generation_times"].append((datetime.now(), batch_duration / 1000))
         st.sidebar.success("1000 transactions generated!")
         st.rerun()
     
     if st.sidebar.button("Generate 10,000 Transactions"):
+        start_time = time.time()
         for _ in range(10000):
             transaction = generate_realistic_transaction()
             encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
@@ -389,6 +442,10 @@ def main():
                 "encrypted_counterparty": encrypted_counterparty
             })
             st.session_state.transactions.append(transaction)
+        # Log the batch generation time
+        batch_duration = time.time() - start_time
+        for _ in range(10000):
+            st.session_state.performance_log["generation_times"].append((datetime.now(), batch_duration / 10000))
         st.sidebar.success("10,000 transactions generated!")
         st.rerun()
     
@@ -396,6 +453,11 @@ def main():
     st.sidebar.subheader("Data Management")
     if st.sidebar.button("Clear All Data"):
         st.session_state.transactions = []
+        st.session_state.performance_log = {
+            "generation_times": [],
+            "analytics_times": [],
+            "last_tps_calculation": None,
+        }
         st.sidebar.success("Data cleared!")
         st.rerun()
     
@@ -460,6 +522,7 @@ def main():
         else:
             st.info("No transactions yet. Generate some data or add transactions manually!")
             if st.button("Generate Sample Data"):
+                start_time = time.time()
                 for _ in range(50):
                     transaction = generate_realistic_transaction()
                     encrypted_amount = encrypt_data(transaction["amount"], st.session_state.encryption_key)
@@ -469,6 +532,9 @@ def main():
                         "encrypted_counterparty": encrypted_counterparty
                     })
                     st.session_state.transactions.append(transaction)
+                batch_duration = time.time() - start_time
+                for _ in range(50):
+                    st.session_state.performance_log["generation_times"].append((datetime.now(), batch_duration / 50))
                 st.success("Sample data generated!")
                 st.rerun()
     
@@ -543,6 +609,7 @@ def main():
                     df_upload = pd.read_excel(uploaded_file)
                     required_cols = ['source', 'amount', 'currency', 'corridor', 'counterparty', 'reference']
                     if all(col in df_upload.columns for col in required_cols):
+                        start_time = time.time()
                         for _, row in df_upload.iterrows():
                             transaction = generate_realistic_transaction(
                                 source=row['source'],
@@ -562,6 +629,9 @@ def main():
                                 "encrypted_counterparty": encrypted_counterparty
                             })
                             st.session_state.transactions.append(transaction)
+                        batch_duration = time.time() - start_time
+                        for _ in range(len(df_upload)):
+                            st.session_state.performance_log["generation_times"].append((datetime.now(), batch_duration / len(df_upload)))
                         st.success(f"Uploaded {len(df_upload)} transactions and predicted risk scores!")
                         st.rerun()
                     else:
@@ -845,11 +915,49 @@ def main():
         st.header("System Configuration")
         
         st.subheader("Performance Metrics")
-        st.write("TPS Capacity: 10–50 (prototype) → 1,000+ (production scalable)")
-        st.write("Ingestion Latency: <1s (real-time processing)")
-        st.write("Analytics Latency: <3s (insight generation)")
-        st.write("SRVA Utilization: Real-time monitoring with INR share growth tracking")
-        st.write(f"Current Transaction Count: {len(st.session_state.transactions)}")
+        
+        # Calculate dynamic metrics
+        transaction_count = len(st.session_state.transactions)
+        
+        # TPS: Calculate based on recent transaction generations
+        tps = calculate_tps()
+        tps_display = f"{tps:.2f} (current, last 5 min)" if tps > 0 else "0.00 (no recent activity)"
+        tps_capacity = "10–50 (prototype) → 1,000+ (production scalable)"
+        
+        # Ingestion Latency: Average of recent transaction generation times
+        recent_generations = [
+            duration for _, duration in st.session_state.performance_log["generation_times"]
+            if (datetime.now() - _).total_seconds() < 300  # Last 5 minutes
+        ]
+        ingestion_latency = np.mean(recent_generations) if recent_generations else 0.0
+        ingestion_display = f"{ingestion_latency*1000:.2f}ms" if ingestion_latency > 0 else "<1ms (no recent data)"
+        
+        # Analytics Latency: Average of recent analytics processing times
+        recent_analytics = [
+            duration for _, duration in st.session_state.performance_log["analytics_times"]
+            if (datetime.now() - _).total_seconds() < 300  # Last 5 minutes
+        ]
+        analytics_latency = np.mean(recent_analytics) if recent_analytics else 0.0
+        analytics_display = f"{analytics_latency*1000:.2f}ms" if analytics_latency > 0 else "<3ms (no recent data)"
+        
+        # SRVA Utilization: Percentage of SRVA transactions
+        if st.session_state.transactions:
+            df = pd.DataFrame(st.session_state.transactions)
+            srva_count = len(df[df['source'].str.startswith('SRVA')])
+            srva_percentage = (srva_count / len(df)) * 100 if len(df) > 0 else 0.0
+            srva_display = f"{srva_percentage:.1f}% of transactions (tracking INR share growth)"
+        else:
+            srva_display = "0% (no transactions)"
+        
+        # Display metrics in a responsive layout
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("TPS Capacity", tps_capacity, delta=tps_display)
+            st.metric("Ingestion Latency", ingestion_display)
+        with col2:
+            st.metric("Analytics Latency", analytics_display)
+            st.metric("SRVA Utilization", srva_display)
+        st.metric("Current Transaction Count", transaction_count)
         
         st.subheader("Simulation Controls")
         st.info("Use sidebar buttons to generate transactions for simulation.")
@@ -860,7 +968,12 @@ def main():
             st.json({
                 "Session Keys": list(st.session_state.keys()),
                 "Transaction Count": len(st.session_state.transactions),
-                "FX Data Shape": st.session_state.fx_data.shape
+                "FX Data Shape": st.session_state.fx_data.shape,
+                "Performance Log": {
+                    "Generation Count": len(st.session_state.performance_log["generation_times"]),
+                    "Analytics Count": len(st.session_state.performance_log["analytics_times"]),
+                    "Last TPS": st.session_state.performance_log["last_tps_calculation"]
+                }
             })
     
     # About Section (Simplified with Markdown)
@@ -871,9 +984,9 @@ def main():
         **Overview:** The Global-INR Trade Settlement Intelligence Platform is an innovative tool that leverages real-time analytics to monitor INR-denominated cross-border trade. It integrates RBI-compliant mechanisms to simulate, analyze, and predict trade flows, promoting efficient global settlements in Rupee.
         
         **RBI Rules Included:**
-        - Special Rupee Vostro Accounts (SRVAs): Supports opening SRVAs without prior approval (RBI Circular August 2025, simplifying process for rupee-based trade settlements).<grok-card data-id="f21f1f" data-type="citation_card"></grok-card><grok-card data-id="f38ba5" data-type="citation_card"></grok-card>
-        - Invoicing in INR: Allows exports/imports to be denominated in INR (A.P. (DIR Series) Circular No. 10, July 11, 2022).<grok-card data-id="62a6e8" data-type="citation_card"></grok-card>
-        - FEMA and AFA Compliance: Built-in tagging for cross-border transactions and data minimization through encryption, aligned with RBI's Draft FEMA Regulations 2025 and liberalization measures.<grok-card data-id="49a690" data-type="citation_card"></grok-card><grok-card data-id="1f036d" data-type="citation_card"></grok-card>
+        - Special Rupee Vostro Accounts (SRVAs): Supports opening SRVAs without prior approval (RBI A.P. (DIR Series) Circular No.08 dated August 05, 2025, simplifying process for rupee-based trade settlements; and Circular No.09 dated August 12, 2025, allowing investment in government securities). [Source: RBI](https://www.rbi.org.in/Scripts/BS_ViewMasCirculardetails.aspx?id=09)
+        - Invoicing in INR: Allows exports/imports to be denominated in INR (A.P. (DIR Series) Circular No. 10 dated July 11, 2022). [Source: RBI](https://rbi.org.in/Scripts/NotificationUser.aspx?Id=12358&Mode=0)
+        - FEMA and AFA Compliance: Built-in tagging for cross-border transactions and data minimization through encryption, aligned with RBI's Draft Foreign Exchange Management (Export and Import of Goods and Services) Regulations, 2025 (released April 4, 2025) and liberalization measures. [Source: RBI](https://www.rbi.org.in/scripts/BS_ViewMasDirections.aspx?id=10395)
         
         **How This Helps the Economy:**
         - Reduces forex risks and conversion costs, saving billions in reserves.
